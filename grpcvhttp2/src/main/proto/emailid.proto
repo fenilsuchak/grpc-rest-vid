@@ -1,0 +1,15 @@
+syntax = "proto3";
+package proto;
+
+service EmailID {
+  rpc getEmailID (UserIDRequest) returns (EmailIDResponse) {}
+}
+
+// Define the objects involved
+message UserIDRequest {
+  string userID = 1;
+}
+
+message EmailIDResponse {
+  string emailD = 1;
+}

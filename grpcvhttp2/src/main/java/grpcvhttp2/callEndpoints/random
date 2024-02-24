@@ -1,0 +1,80 @@
+// NotificationService.java
+
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.util.concurrent.CompletableFuture;
+
+public class NotificationService {
+
+    private static final String NOTIFICATION_SERVICE_BASE_URL = "http://notification-service-api/";
+    private static final String USER_SERVICE_BASE_URL = "http://user-service-api/";
+
+    public CompletableFuture<Void> sendNotificationToUserAsync(int userId, String message) {
+        // Simulate sending a notification via HTTP asynchronously
+        return getUserEmailAsync(userId)
+                .thenCompose(userEmail -> sendNotificationRequest(userId, userEmail, message))
+                .thenCompose(notificationStatus -> simulateAsyncOperation())
+                .thenCompose(result -> logNotificationAsync(userId, message))
+                .thenAccept(logResult -> System.out.println("Notification sent successfully"));
+    }
+
+    private CompletableFuture<String> getUserEmailAsync(int userId) {
+        // Simulate fetching user email via HTTP asynchronously
+        String userApiUrl = USER_SERVICE_BASE_URL + "users/" + userId + "/email";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(userApiUrl))
+                .GET()
+                .build();
+
+        return HttpClient.newHttpClient()
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body);
+    }
+
+    private CompletableFuture<Void> sendNotificationRequest(int userId, String userEmail, String message) {
+        // Simulate sending a notification via HTTP asynchronously
+        String notificationApiUrl = NOTIFICATION_SERVICE_BASE_URL + "notifications";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(notificationApiUrl))
+                .POST(HttpRequest.BodyPublishers.ofString("userEmail=" + userEmail + "&message=" + message))
+                .build();
+
+        return HttpClient.newHttpClient()
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenAccept(responseBody -> System.out.println("Notification API response: " + responseBody));
+    }
+
+    private CompletableFuture<Void> simulateAsyncOperation() {
+        // Simulate an additional asynchronous operation
+        return CompletableFuture.runAsync(() -> {
+            // Simulate processing time
+            sleep(2000);
+            System.out.println("Additional async operation completed.");
+        });
+    }
+
+    private CompletableFuture<Void> logNotificationAsync(int userId, String message) {
+        // Simulate logging notification via HTTP asynchronously
+        String logApiUrl = NOTIFICATION_SERVICE_BASE_URL + "log";
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(logApiUrl))
+                .POST(HttpRequest.BodyPublishers.ofString("userId=" + userId + "&message=" + message))
+                .build();
+
+        return HttpClient.newHttpClient()
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenAccept(logResult -> System.out.println("Notification logged for user " + userId));
+    }
+
+    private static void sleep(long millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+}
