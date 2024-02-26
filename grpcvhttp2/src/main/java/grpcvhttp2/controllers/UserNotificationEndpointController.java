@@ -20,7 +20,7 @@ public class UserNotificationEndpointController {
 
     private static final String USER_SERVICE_BASE_URL = "http://localhost:8081/";
 
-    private static final String EMAIL_SERVICE_ENDPOINT = "http://email-service-api/";
+    private static final String EMAIL_SERVICE_ENDPOINT = "http://email-service-api-that-does-not-exist/";
 
     private static final ManagedChannel myChannel = ManagedChannelBuilder.forAddress("localhost", 50051).usePlaintext().build();
 
@@ -43,6 +43,7 @@ public class UserNotificationEndpointController {
         public void onCompleted() {
             // This method is called when the RPC call is complete
             // You can perform any cleanup here if needed
+
         }
     };
 
@@ -53,7 +54,7 @@ public class UserNotificationEndpointController {
         }
         else {
             return getUserEmailAsyncGrpc(userId)
-                        .thenCompose(userEmail -> sendNotificationRequest(responseFuture.toString(), message));
+                        .thenCompose(response -> sendNotificationRequestGrpc(response, message));
         }
     }
 
@@ -69,8 +70,8 @@ public class UserNotificationEndpointController {
                 .sendAsync(request, HttpResponse.BodyHandlers.ofString())
                 .thenApply(HttpResponse::body)
                 .exceptionally(throwable -> {
-                    System.out.println("Error " + throwable.toString());
-                    return null;
+                    System.out.println("Failed in fetching Email");
+                    throw new RuntimeException(throwable);
                 });
     }
 
@@ -83,9 +84,11 @@ public class UserNotificationEndpointController {
 
         emailIDStub.getEmailID(userIDRequest, responseObserver);
 
-        return responseFuture;
+        return responseFuture.exceptionally(throwable -> {
+            System.out.println("Failed to fetch email via Grpc call");
+            return null;
+        });
     }
-
 
 
     private CompletableFuture<Void> sendNotificationRequest(String userEmail, String message) {
@@ -103,7 +106,27 @@ public class UserNotificationEndpointController {
                 .thenApply(HttpResponse::body)
                 .thenAccept(responseBody -> System.out.println("Notification API response: " + responseBody))
                 .exceptionally(throwable -> {
-                    System.out.println("Failed with Error which is caught here but passed on --> " + throwable.toString());
+                    System.out.println("Failed in sending Email notification to user with email id --> " + userEmail);
+                    throw new RuntimeException(throwable);
+                });
+    }
+
+    private CompletableFuture<Void> sendNotificationRequestGrpc(Emailid.EmailIDResponse userEmail , String message) {
+        // Simulate sending a notification via HTTP asynchronously
+
+        System.out.println("userEmail obtained from Async call is " + userEmail.toString());
+
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(EMAIL_SERVICE_ENDPOINT))
+                .POST(HttpRequest.BodyPublishers.ofString("userEmail=" + userEmail.toString() + "&message=" + message))
+                .build();
+
+        return HttpClient.newHttpClient()
+                .sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(HttpResponse::body)
+                .thenAccept(responseBody -> System.out.println("Notification API response: " + responseBody))
+                .exceptionally(throwable -> {
+                    System.out.println("Failed in sending Email notification to user with email id --> " + userEmail.toString());
                     throw new RuntimeException(throwable);
                 });
     }
